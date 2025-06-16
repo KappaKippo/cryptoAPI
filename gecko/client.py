@@ -10,5 +10,3 @@ class RequestsClient:
     def get(self):
         response = get(self.url, headers=self.headers)
         return response.json()
-
-    def post(self): ...
