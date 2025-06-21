@@ -1,8 +1,7 @@
-from typing import Annotated
-
+from gecko.dependencies import get_and_validate_ids_names_symbols_params
 from gecko.client import RequestsClient
 from gecko.config import settings
-from fastapi import FastAPI, BackgroundTasks, Depends, status, Query
+from fastapi import FastAPI, BackgroundTasks, Depends, status
 from contextlib import asynccontextmanager
 from gecko.storage_interface import StorageManager
 from gecko.db import create_tables
@@ -49,22 +48,27 @@ async def get_coins(
 
 @app.get("/coin_price")
 async def get_coin_price(
-    ids: Annotated[str, Query()] = None,
-    names: Annotated[str, Query()] = None,
-    symbols: Annotated[str, Query()] = None,
+    session: Session = Depends(get_session),
+    coin_price_params: dict = Depends(get_and_validate_ids_names_symbols_params),
     currencies: str = "usd",
     precision: str = "2",
 ):
     coin_price_url = get_url("simple/price")
     params = {
         "vs_currencies": currencies,
-        "ids": ids,
-        "names": names,
-        "symbols": symbols,
+        "ids": coin_price_params.get("ids"),
+        "names": coin_price_params.get("names"),
+        "symbols": coin_price_params.get("symbols"),
         "precision": precision,
     }
 
     client = RequestsClient(url=coin_price_url, params=params)
     response = client.get()
+
+    storage = StorageManager(session)
+    coin_ids = storage.get_objects(
+        coin_price_params.get("correlated_field"), coin_price_params.get("values")
+    )
+    print(coin_ids)
 
     return response

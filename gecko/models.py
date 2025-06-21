@@ -6,3 +6,6 @@ class Coin(SQLModel, table=True):
     gecko_id: str | None = Field(index=True, alias="id")
     symbol: str
     name: str
+
+
+class Price: ...
