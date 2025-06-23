@@ -39,7 +39,7 @@ async def get_coins(
 
     storage = StorageManager(session)
     for coin in response:
-        background_task.add_task(storage.create_objects, Coin(**coin))
+        background_task.add_task(storage.create_coins, Coin(**coin))
 
     background_task.add_task(storage.commit_and_close)
 
@@ -51,7 +51,7 @@ async def get_coin_price(
     session: Session = Depends(get_session),
     coin_price_params: dict = Depends(get_and_validate_ids_names_symbols_params),
     currencies: str = "usd",
-    precision: str = "2",
+    precision: str = "12",
 ):
     coin_price_url = get_url("simple/price")
     params = {
@@ -61,14 +61,19 @@ async def get_coin_price(
         "symbols": coin_price_params.get("symbols"),
         "precision": precision,
     }
-
     client = RequestsClient(url=coin_price_url, params=params)
-    response = client.get()
-
     storage = StorageManager(session)
-    coin_ids = storage.get_objects(
+
+    coin_ids = await storage.get_objects(
         coin_price_params.get("correlated_field"), coin_price_params.get("values")
     )
-    print(coin_ids)
+    response = client.get()
+    coins = response.keys()
+    prices = [response[coin][currencies] for coin in coins]
+
+    if not coin_ids:
+        return {"details": "No coins found"}
+
+    await storage.create_and_correlate_price(coin_ids, prices)
 
     return response
